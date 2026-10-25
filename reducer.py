@@ -13,7 +13,7 @@ current_stormy_count = 0
 def print_result():
     station_id, month = current_key.split("|")
     avg_temp = (current_temp_sum / current_count).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    print(f"{station_id}\t{month}\t{avg_temp}\t{current_max_wind}\t{current_count}\t{current_stormy_count}")
+    print(f"{station_id}\t{month}\t{avg_temp}\t{current_max_wind}\t{current_count}\t{current_stormy_count}\t{current_temp_sum}")
 
 
 for line in sys.stdin:
