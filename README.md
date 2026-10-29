@@ -26,6 +26,7 @@ cat dane/*.csv | python3 mapper.py | sort -k1,1 | python3 combiner.py | sort -k1
 cd ~/BigData25 && docker compose up -d
 cd ~/BigData25/work
 git clone https://github.com/mgawlak/pbd-projekt19-mapreduce.git || (cd pbd-projekt19-mapreduce && git pull)
+cd pbd-projekt19-mapreduce
 mkdir -p dane19 && cd dane19
 wget https://www.cs.put.poznan.pl/kjankiewicz/bigdata/projekty/test2026-05/zestaw19.zip -O test19.zip
 unzip -o test19.zip -d test
@@ -33,7 +34,7 @@ ls test/input/datasource1 | wc -l
 ```
 Ostrzeżenie `appears to use backslashes as path separators` można zignorować (zip z Windowsa). Powinno być 50 plików.
 
-Dane trzymamy w `work/dane19`, **obok** repo, a nie w jego środku.
+Dane leżą w `pbd-projekt19-mapreduce/dane19` – katalog jest w `.gitignore`, więc nie trafi na GitHub.
 
 ### 2. Master
 ```bash
@@ -44,8 +45,8 @@ cd ~/BigData25 && docker compose exec -it master bash
 ### 3. Dane do HDFS
 ```bash
 hadoop fs -mkdir -p projekt/input/datasource1 projekt/input/datasource4
-hadoop fs -put -f ~/dane19/test/input/datasource1/* projekt/input/datasource1/
-hadoop fs -put -f ~/dane19/test/input/datasource4/* projekt/input/datasource4/
+hadoop fs -put -f ~/pbd-projekt19-mapreduce/dane19/test/input/datasource1/* projekt/input/datasource1/
+hadoop fs -put -f ~/pbd-projekt19-mapreduce/dane19/test/input/datasource4/* projekt/input/datasource4/
 hadoop fs -ls projekt/input/datasource1 | wc -l
 ```
 
