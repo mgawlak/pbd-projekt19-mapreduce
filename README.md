@@ -18,3 +18,69 @@ Wynik MapReduce (tab-separated): `station_id  month  avg_temp  max_wind_speed  n
 ```bash
 cat dane/*.csv | python3 mapper.py | sort -k1,1 | python3 combiner.py | sort -k1,1 | python3 reducer.py
 ```
+
+## Uruchomienie na BigData25
+
+### 1. Terminal gospodarza – środowisko, kod, dane
+```bash
+cd ~/BigData25 && docker compose up -d
+cd ~/BigData25/work
+git clone https://github.com/mgawlak/pbd-projekt19-mapreduce.git || (cd pbd-projekt19-mapreduce && git pull)
+mkdir -p dane19 && cd dane19
+wget https://www.cs.put.poznan.pl/kjankiewicz/bigdata/projekty/test2026-05/zestaw19.zip -O test19.zip
+unzip -o test19.zip -d test
+ls test/input/datasource1 | wc -l
+```
+Ostrzeżenie `appears to use backslashes as path separators` można zignorować (zip z Windowsa). Powinno być 50 plików.
+
+Dane trzymamy w `work/dane19`, **obok** repo, a nie w jego środku.
+
+### 2. Master
+```bash
+cd ~/BigData25 && docker compose exec -it master bash
+```
+`~` na masterze (`/home/hadoop`) to katalog `~/BigData25/work` gospodarza.
+
+### 3. Dane do HDFS
+```bash
+hadoop fs -mkdir -p projekt/input/datasource1 projekt/input/datasource4
+hadoop fs -put -f ~/dane19/test/input/datasource1/* projekt/input/datasource1/
+hadoop fs -put -f ~/dane19/test/input/datasource4/* projekt/input/datasource4/
+hadoop fs -ls projekt/input/datasource1 | wc -l
+```
+
+### 4. MapReduce i Hive
+```bash
+cd ~/pbd-projekt19-mapreduce && chmod +x *.sh *.py
+./run_mr.sh projekt/input/datasource1 projekt/output3
+./run_hive.sh projekt/output3 projekt/input/datasource4 projekt/output6
+```
+
+### 5. Weryfikacja (zbiór test2026-05)
+```bash
+hadoop fs -cat projekt/output3/part-* | wc -l
+hadoop fs -cat projekt/output3/part-* | grep 03b6ada2-ed28-4f56-8fc0-99ce603b6bfe | grep 2021-05
+hadoop fs -cat projekt/output6/* | wc -l
+hadoop fs -cat projekt/output6/* | grep 'Kujawsko-Pomorskie' | grep '2021-05'
+```
+Oczekiwane:
+- MapReduce: 1830 wierszy, `03b6ada2-… 2021-05 -0.18 98.2 15 5`
+- Hive: 549 wierszy, `region_month_avg_temp` ≈ 10.5682, `region_avg_temp` ≈ 6.30278, `avg_temp_deviation` ≈ 4.2654, ranking `cef035b0…` = 1, `bef1b196…` = 2
+
+### 6. Zapis wyników i koniec
+```bash
+mkdir -p ~/wyniki
+hadoop fs -getmerge projekt/output3 ~/wyniki/output3.tsv
+hadoop fs -getmerge projekt/output6 ~/wyniki/output6.json
+exit
+cd ~/BigData25 && docker compose stop
+```
+Wyniki są w `~/BigData25/work/wyniki/`. `docker compose stop` zachowuje HDFS; `docker compose down -v` go kasuje.
+
+### Podgląd HDFS
+```bash
+docker compose exec -it master bash
+hadoop fs -ls -R projekt | head -40
+hadoop fs -cat projekt/output6/* | head -3
+```
+lub w przeglądarce: `BigData25-Interfaces.html` → HDFS NameNode → Utilities → Browse the file system → `/user/hadoop/projekt`.
