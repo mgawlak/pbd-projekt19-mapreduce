@@ -85,3 +85,69 @@ hadoop fs -ls -R projekt | head -40
 hadoop fs -cat projekt/output6/* | head -3
 ```
 lub w przeglądarce: `BigData25-Interfaces.html` → HDFS NameNode → Utilities → Browse the file system → `/user/hadoop/projekt`.
+
+## Airflow na BigData25 (`projekt1.py`)
+
+W `projekt1.py` uzupełnione są tylko operatory `hadoop_streaming` i `hive` (te same polecenia co w `run_mr.sh` i `run_hive.sh`, ścieżki z parametrów przepływu).
+
+### 1. Port 8080 (gospodarz)
+W `~/BigData25/docker-compose.yml`, w `services/master/ports` dopisz:
+```yaml
+      - "8080:8080" # Apache Airflow
+```
+```bash
+cd ~/BigData25 && docker compose up -d && docker compose exec -it master bash
+```
+
+### 2. Instalacja i start Airflow (master)
+```bash
+export AIRFLOW_HOME=~/airflow
+export AIRFLOW_VERSION=3.3.1
+PYTHON_VERSION="$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
+export AIRFLOW__CORE__LOAD_EXAMPLES=False
+export PATH=$PATH:~/.local/bin
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv venv
+source ~/.venv/bin/activate
+uv pip install "apache-airflow==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
+airflow db migrate
+sed -i 's/^refresh_interval\s*=.*/refresh_interval = 15/' $AIRFLOW_HOME/airflow.cfg
+setsid airflow standalone < /dev/null > ~/airflow/standalone.log 2>&1 &
+disown
+cat ~/airflow/simple_auth_manager_passwords.json.generated
+```
+Interfejs: http://localhost:8080 (login i hasło z ostatniego polecenia).
+
+### 3. Pliki projektu do `dags` (master)
+```bash
+mkdir -p ~/airflow/dags/project_files
+cd ~/pbd-projekt19-mapreduce && git pull
+cp projekt1.py ~/airflow/dags/
+cp mapper.py combiner.py reducer.py run_mr.sh hive.hql run_hive.sh ~/airflow/dags/project_files/
+chmod +x ~/airflow/dags/project_files/*
+```
+
+### 4. Dane wejściowe w HDFS (master)
+```bash
+hadoop fs -mkdir -p /tmp
+hadoop fs -put -f ~/pbd-projekt19-mapreduce/dane19/test/input /tmp/
+hadoop fs -ls /tmp/input
+```
+
+### 5. Uruchomienie
+W Airflow: przepływ `project1-workflow` → **Trigger** z parametrami:
+- `dags_home` = `/home/hadoop/airflow/dags`
+- `input_dir` = `/tmp/input`
+
+W logu taska `get_output` ma być wynik JSON. Uruchom przepływ drugi raz, żeby sprawdzić powtarzalność.
+
+### 6. Paczka do oddania
+```bash
+pkill -f "airflow"
+pgrep -af airflow
+sudo apt-get update && sudo apt-get install -y zip
+cd ~/airflow && rm -rf dags/__pycache__ && zip -r ~/projekt1.zip dags
+unzip -l ~/projekt1.zip
+```
+`~/projekt1.zip` w kontenerze to `~/BigData25/work/projekt1.zip` na gospodarzu.
