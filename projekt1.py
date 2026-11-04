@@ -68,7 +68,7 @@ with DAG(
         task_id="hadoop_streaming",
         bash_command=(
             "mapred streaming "
-            "-D mapreduce.input.fileinputformat.split.maxsize=134217728 "
+            "-D mapreduce.input.fileinputformat.split.maxsize=33554432 "
             "-D stream.map.input.ignoreKey=true "
             "-files {{ params.dags_home }}/project_files/mapper.py,"
             "{{ params.dags_home }}/project_files/combiner.py,"
