@@ -13,7 +13,7 @@ hadoop fs -rm -r -f "$OUTPUT_DIR3"
 
 # split.maxsize=33554432 (32 MB) -> ok. 4 mappery dla pelnego zbioru (~110 MB); 134217728 (128 MB) -> 1 mapper
 mapred streaming \
-  -D mapreduce.input.fileinputformat.split.maxsize=33554432 \
+  -D mapreduce.input.fileinputformat.split.maxsize=134217728 \
   -D stream.map.input.ignoreKey=true \
   -files "$SCRIPT_DIR/mapper.py,$SCRIPT_DIR/combiner.py,$SCRIPT_DIR/reducer.py" \
   -inputformat org.apache.hadoop.mapred.lib.CombineTextInputFormat \
